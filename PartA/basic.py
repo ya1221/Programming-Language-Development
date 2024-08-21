@@ -1,8 +1,9 @@
 #######################################
 # IMPORTS
 #######################################
+from unittest.mock import right
 
-from string_with_arrows import *
+from strings_with_arrows import *
 
 import string
 
@@ -815,7 +816,7 @@ class Value:
     def dived_by(self, other):
         return None, self.illegal_operation(other)
 
-    def powed_by(self, other):
+    def modulo_by(self, other):
         return None, self.illegal_operation(other)
 
     def get_comparison_eq(self, other):
@@ -899,6 +900,19 @@ class Number(Value):
         else:
             return None, Value.illegal_operation(self, other)
 
+    def modulo_by(self, other):
+        if isinstance(other, Number):
+            if other.value == 0:
+                return None, RTError(
+                    other.pos_start, other.pos_end,
+                    'make modulo by zero',
+                    self.context
+                )
+
+            return Number(self.value % other.value).set_context(self.context), None
+        else:
+            return None, Value.illegal_operation(self, other)
+
     '''  def powed_by(self, other):
         if isinstance(other, Number):
             return Number(self.value ** other.value).set_context(self.context), None
@@ -950,6 +964,8 @@ class Number(Value):
     def ored_by(self, other):
         if isinstance(other, Number):
             return Number(int(self.value or other.value)).set_context(self.context), None
+        elif not other:
+            return Number(int(self.value)).set_context(self.context), None
         else:
             return None, Value.illegal_operation(self, other)
 
@@ -1097,8 +1113,11 @@ class Interpreter:
         res = RTResult()
         left = res.register(self.visit(node.left_node, context))
         if res.error: return res
-        right = res.register(self.visit(node.right_node, context))
-        if res.error: return res
+        if not (node.op_tok.matches(TT_KEYWORD, 'OR') and left.value):
+            right = res.register(self.visit(node.right_node, context))
+            if res.error: return res
+        else:
+            right = 0
 
         if node.op_tok.type == TT_PLUS:
             result, error = left.added_to(right)

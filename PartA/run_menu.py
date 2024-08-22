@@ -1,5 +1,6 @@
 from PartA import interp
 
+# Implements a Read-Eval-Print Loop for the interpreter
 def REPL():
     print("insert 'END' to stop.")
     while True:
@@ -11,6 +12,7 @@ def REPL():
         if error: print(error.as_string())
         elif result: print(result)
 
+# Runs a full program from a file with a .lambda extension
 def run_full_program(filepath):
     # Check if the file has the correct .lambda extension
     if not filepath.endswith('.lambda'):
@@ -27,7 +29,7 @@ def run_full_program(filepath):
         print(f"Error: Unable to read file '{filepath}'.")
         return
 
-    content =  content.split('\n')
+    content = content.split('\n')
     print(content)
     for line in content:
         if len(line):
@@ -37,9 +39,11 @@ def run_full_program(filepath):
             elif result:
                 print(result)
 
+# Prints the menu options for the user
 def print_menu():
     print("Menu:\n0 - Exit\n1 - Line by line\n2 - Full program")
 
+# Handles the user's menu choice
 def handle_choice(choice):
     if choice == '0':
         print("Exiting the program. Goodbye!")
@@ -50,6 +54,7 @@ def handle_choice(choice):
     else:
         print("Invalid choice. Please select a valid option.")
 
+# Main function that runs the program loop
 def main():
     choice = None
     while choice != '0':
@@ -57,5 +62,6 @@ def main():
         choice = input("Enter your choice: ")
         handle_choice(choice)
 
+# Ensures that main() is only run if this script is executed directly
 if __name__ == "__main__":
     main()

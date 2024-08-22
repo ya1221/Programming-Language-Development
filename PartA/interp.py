@@ -13,11 +13,11 @@ DIGITS = '0123456789'
 LETTERS = string.ascii_letters
 LETTERS_DIGITS = LETTERS + DIGITS
 
-
 #######################################
 # ERRORS
 #######################################
 
+# Base class for all errors
 class Error:
     def __init__(self, pos_start, pos_end, error_name, details):
         self.pos_start = pos_start
@@ -25,39 +25,42 @@ class Error:
         self.error_name = error_name
         self.details = details
 
+    # Convert error to string representation
     def as_string(self):
         result = f'{self.error_name}: {self.details}\n'
         result += f'File {self.pos_start.fn}, line {self.pos_start.ln + 1}'
         result += '\n\n' + string_with_arrows(self.pos_start.ftxt, self.pos_start, self.pos_end)
         return result
 
-
+# Error for illegal characters
 class IllegalCharError(Error):
     def __init__(self, pos_start, pos_end, details):
         super().__init__(pos_start, pos_end, 'Illegal Character', details)
 
-
+# Error for expected characters
 class ExpectedCharError(Error):
     def __init__(self, pos_start, pos_end, details):
         super().__init__(pos_start, pos_end, 'Expected Character', details)
 
-
+# Error for invalid syntax
 class InvalidSyntaxError(Error):
     def __init__(self, pos_start, pos_end, details=''):
         super().__init__(pos_start, pos_end, 'Invalid Syntax', details)
 
-
+# Error for runtime errors
 class RTError(Error):
     def __init__(self, pos_start, pos_end, details, context):
         super().__init__(pos_start, pos_end, 'Runtime Error', details)
         self.context = context
 
+    # Convert runtime error to string representation with traceback
     def as_string(self):
         result = self.generate_traceback()
         result += f'{self.error_name}: {self.details}'
         result += '\n\n' + string_with_arrows(self.pos_start.ftxt, self.pos_start, self.pos_end)
         return result
 
+    # Generate traceback for runtime error
     def generate_traceback(self):
         result = ''
         pos = self.pos_start
@@ -70,11 +73,11 @@ class RTError(Error):
 
         return 'Traceback (most recent call last):\n' + result
 
-
 #######################################
 # POSITION
 #######################################
 
+# Class to keep track of position in the source code
 class Position:
     def __init__(self, idx, ln, col, fn, ftxt):
         self.idx = idx
@@ -83,6 +86,7 @@ class Position:
         self.fn = fn
         self.ftxt = ftxt
 
+    # Move to the next position
     def advance(self, current_char=None):
         self.idx += 1
         self.col += 1
@@ -93,14 +97,15 @@ class Position:
 
         return self
 
+    # Create a copy of the current position
     def copy(self):
         return Position(self.idx, self.ln, self.col, self.fn, self.ftxt)
-
 
 #######################################
 # TOKENS
 #######################################
 
+# Token types
 TT_INT = 'INT'
 TT_IDENTIFIER = 'IDENTIFIER'
 TT_KEYWORD = 'KEYWORD'
@@ -131,7 +136,7 @@ KEYWORDS = [
     'Defun'
 ]
 
-
+# Class representing a token
 class Token:
     def __init__(self, type_, value=None, pos_start=None, pos_end=None):
         self.type = type_
@@ -145,6 +150,7 @@ class Token:
         if pos_end:
             self.pos_end = pos_end.copy()
 
+    # Check if token matches given type and value
     def matches(self, type_, value):
         return self.type == type_ and self.value == value
 
@@ -152,11 +158,11 @@ class Token:
         if self.value: return f'{self.type}:{self.value}'
         return f'{self.type}'
 
-
 #######################################
 # LEXER
 #######################################
 
+# Class for tokenizing the input text
 class Lexer:
     def __init__(self, fn, text):
         self.fn = fn
@@ -165,10 +171,12 @@ class Lexer:
         self.current_char = None
         self.advance()
 
+    # Move to the next character
     def advance(self):
         self.pos.advance(self.current_char)
         self.current_char = self.text[self.pos.idx] if self.pos.idx < len(self.text) else None
 
+    # Generate tokens from the input text
     def make_tokens(self):
         tokens = []
         comment = False
@@ -238,6 +246,7 @@ class Lexer:
         tokens.append(Token(TT_EOF, pos_start=self.pos))
         return tokens, None
 
+    # Create a number token
     def make_number(self):
         num_str = ''
         pos_start = self.pos.copy()
@@ -246,6 +255,7 @@ class Lexer:
             self.advance()
         return Token(TT_INT, int(num_str), pos_start, self.pos)
 
+    # Create an identifier or keyword token
     def make_identifier(self):
         id_str = ''
         pos_start = self.pos.copy()
@@ -257,6 +267,7 @@ class Lexer:
         tok_type = TT_KEYWORD if id_str in KEYWORDS else TT_IDENTIFIER
         return Token(tok_type, id_str, pos_start, self.pos)
 
+    # Create a minus or arrow token
     def make_minus_or_arrow(self):
         tok_type = TT_MINUS
         pos_start = self.pos.copy()
@@ -268,6 +279,7 @@ class Lexer:
 
         return Token(tok_type, pos_start=pos_start, pos_end=self.pos)
 
+    # Create a not equals token
     def make_not_equals(self):
         pos_start = self.pos.copy()
         self.advance()
@@ -278,6 +290,7 @@ class Lexer:
         else:
             return Token(TT_NOT, pos_start=pos_start, pos_end=self.pos)
 
+    # Create an equals token
     def make_equals(self):
         pos_start = self.pos.copy()
         self.advance()
@@ -289,6 +302,7 @@ class Lexer:
         self.advance()
         return None, ExpectedCharError(pos_start, self.pos, "'=' (after '=')")
 
+    # Create a less than or less than or equal token
     def make_less_than(self):
         tok_type = TT_LT
         pos_start = self.pos.copy()
@@ -300,6 +314,7 @@ class Lexer:
 
         return Token(tok_type, pos_start=pos_start, pos_end=self.pos)
 
+    # Create a greater than or greater than or equal token
     def make_greater_than(self):
         tok_type = TT_GT
         pos_start = self.pos.copy()
@@ -311,6 +326,7 @@ class Lexer:
 
         return Token(tok_type, pos_start=pos_start, pos_end=self.pos)
 
+    # Create an OR token
     def make_OR(self):
         pos_start = self.pos.copy()
         self.advance()
@@ -322,6 +338,7 @@ class Lexer:
         self.advance()
         return None, ExpectedCharError(pos_start, self.pos, "'|' (after '|')")
 
+    # Create an AND token
     def make_AND(self):
         pos_start = self.pos.copy()
         self.advance()
@@ -337,6 +354,7 @@ class Lexer:
 # NODES
 #######################################
 
+# Node representing a number in the AST
 class NumberNode:
     def __init__(self, tok):
         self.tok = tok
@@ -347,14 +365,14 @@ class NumberNode:
     def __repr__(self):
         return f'{self.tok}'
 
-
+# Node representing a variable access in the AST
 class VarAccessNode:
     def __init__(self, var_name_tok):
         self.var_name_tok = var_name_tok
         self.pos_start = self.var_name_tok.pos_start
         self.pos_end = self.var_name_tok.pos_end
 
-
+# Node representing a binary operation in the AST
 class BinOpNode:
     def __init__(self, left_node, op_tok, right_node):
         self.left_node = left_node
@@ -367,7 +385,7 @@ class BinOpNode:
     def __repr__(self):
         return f'({self.left_node}, {self.op_tok}, {self.right_node})'
 
-
+# Node representing a unary operation in the AST
 class UnaryOpNode:
     def __init__(self, op_tok, node):
         self.op_tok = op_tok
@@ -379,6 +397,7 @@ class UnaryOpNode:
     def __repr__(self):
         return f'({self.op_tok}, {self.node})'
 
+# Node representing a function definition in the AST
 class FuncDefNode:
     def __init__(self, var_name_tok, arg_name_toks, body_node):
         self.var_name_tok = var_name_tok
@@ -394,7 +413,7 @@ class FuncDefNode:
 
         self.pos_end = self.body_node.pos_end
 
-
+# Node representing a function call in the AST
 class CallNode:
     def __init__(self, node_to_call, arg_nodes):
         self.node_to_call = node_to_call
@@ -407,53 +426,59 @@ class CallNode:
         else:
             self.pos_end = self.node_to_call.pos_end
 
-
 #######################################
 # PARSE RESULT
 #######################################
 
+# Class to hold the result of parsing
 class ParseResult:
     def __init__(self):
         self.error = None
         self.node = None
 
+    # Register a result or node
     def register(self, res):
         if isinstance(res, ParseResult):
             if res.error: self.error = res.error
             return res.node
         return res
 
+    # Set successful parse result
     def success(self, node):
         self.node = node
         return self
 
+    # Set parse failure
     def failure(self, error):
         self.error = error
         return self
-
 
 #######################################
 # PARSER
 #######################################
 
+# Class for parsing tokens into an Abstract Syntax Tree (AST)
 class Parser:
     def __init__(self, tokens):
         self.tokens = tokens
         self.tok_idx = -1
         self.advance()
 
+    # Move to the next token
     def advance(self, ):
         self.tok_idx += 1
         if self.tok_idx < len(self.tokens):
             self.current_tok = self.tokens[self.tok_idx]
         return self.current_tok
 
+    # Delete a token at a specific index
     def delete(self, index):
         del self.tokens[index]
         if self.tok_idx < len(self.tokens):
             self.current_tok = self.tokens[self.tok_idx]
         return self.current_tok
 
+    # Parse the tokens
     def parse(self):
         res = self.expr()
         if not res.error and self.current_tok.type != TT_EOF:
@@ -463,8 +488,7 @@ class Parser:
             ))
         return res
 
-    ###################################
-
+    # Parse expressions
     def expr(self):
         res = ParseResult()
         node = res.register(self.bin_op(self.comp_expr, (TT_AND, TT_OR)))
@@ -472,6 +496,7 @@ class Parser:
             return res
         return res.success(node)
 
+    # Parse comparison expressions
     def comp_expr(self):
         res = ParseResult()
 
@@ -490,12 +515,15 @@ class Parser:
 
         return res.success(node)
 
+    # Parse arithmetic expressions
     def arith_expr(self):
         return self.bin_op(self.term, (TT_PLUS, TT_MINUS))
 
+    # Parse terms
     def term(self):
         return self.bin_op(self.factor, (TT_MUL, TT_DIV, TT_MOD))
 
+    # Parse factors
     def factor(self):
         res = ParseResult()
         tok = self.current_tok
@@ -508,6 +536,7 @@ class Parser:
 
         return self.bin_op(self.call)
 
+    # Parse function calls
     def call(self):
         res = ParseResult()
         atom = res.register(self.atom())
@@ -540,6 +569,7 @@ class Parser:
             return res.success(CallNode(atom, arg_nodes))
         return res.success(atom)
 
+    # Parse atoms (basic elements like numbers, identifiers, etc.)
     def atom(self):
         res = ParseResult()
         tok = self.current_tok
@@ -580,6 +610,7 @@ class Parser:
             "Expected int, identifier, '+', '-', '(', 'Defun'"
         ))
 
+    # Parse lambda expressions
     def lambd_expr(self):
         res = ParseResult()
 
@@ -638,7 +669,6 @@ class Parser:
             ))
         res.register(self.delete(self.tok_idx))
 
-
         if self.current_tok.type != TT_INT:
             return res.failure(InvalidSyntaxError(
                 self.current_tok.pos_start, self.current_tok.pos_end,
@@ -680,6 +710,7 @@ class Parser:
         res.register(self.advance())
         return self.expr()
 
+    # Parse function definitions
     def func_def(self):
         res = ParseResult()
 
@@ -755,8 +786,7 @@ class Parser:
             node_to_return
         ))
 
-    ###################################
-
+    # Parse binary operations
     def bin_op(self, func, ops=None):
         res = ParseResult()
         left = res.register(func())
@@ -772,46 +802,54 @@ class Parser:
 
         return res.success(left)
 
-
 #######################################
 # RUNTIME RESULT
 #######################################
 
+# Class to hold the result of runtime operations
 class RTResult:
     def __init__(self):
         self.value = None
         self.error = None
 
+    # Register a result
     def register(self, res):
         if res.error: self.error = res.error
         return res.value
 
+    # Set successful runtime result
     def success(self, value):
         self.value = value
         return self
 
+    # Set runtime failure
     def failure(self, error):
         self.error = error
         return self
-
 
 #######################################
 # VALUES
 #######################################
 
+# Base class for all values in the language
 class Value:
     def __init__(self):
         self.set_pos()
         self.set_context()
 
+    # Sets the position of the value in the source code
     def set_pos(self, pos_start=None, pos_end=None):
         self.pos_start = pos_start
         self.pos_end = pos_end
         return self
 
+    # Sets the context for the value
     def set_context(self, context=None):
         self.context = context
         return self
+
+    # The following methods define operations between values
+    # They return None and an error by default, to be overridden by subclasses
 
     def added_to(self, other):
         return None, self.illegal_operation(other)
@@ -855,15 +893,19 @@ class Value:
     def notted(self, other):
         return None, self.illegal_operation(other)
 
+    # Method for executing a value (used for functions)
     def execute(self, args):
         return RTResult().failure(self.illegal_operation())
 
+    # Method for creating a copy of the value
     def copy(self):
         raise Exception('No copy method defined')
 
+    # Method to determine if the value is considered true
     def is_true(self):
         return False
 
+    # Helper method to create an illegal operation error
     def illegal_operation(self, other=None):
         if not other: other = self
         return RTError(
@@ -872,30 +914,34 @@ class Value:
             self.context
         )
 
-
+# Represents a numeric value in the language
 class Number(Value):
     def __init__(self, value):
         super().__init__()
         self.value = value
 
+    # Implements addition for numbers
     def added_to(self, other):
         if isinstance(other, Number):
             return Number(self.value + other.value).set_context(self.context), None
         else:
             return None, Value.illegal_operation(self, other)
 
+    # Implements subtraction for numbers
     def subbed_by(self, other):
         if isinstance(other, Number):
             return Number(self.value - other.value).set_context(self.context), None
         else:
             return None, Value.illegal_operation(self, other)
 
+    # Implements multiplication for numbers
     def multed_by(self, other):
         if isinstance(other, Number):
             return Number(self.value * other.value).set_context(self.context), None
         else:
             return None, Value.illegal_operation(self, other)
 
+    # Implements division for numbers
     def dived_by(self, other):
         if isinstance(other, Number):
             if other.value == 0:
@@ -909,6 +955,7 @@ class Number(Value):
         else:
             return None, Value.illegal_operation(self, other)
 
+    # Implements modulo operation for numbers
     def modulo_by(self, other):
         if isinstance(other, Number):
             if other.value == 0:
@@ -922,48 +969,56 @@ class Number(Value):
         else:
             return None, Value.illegal_operation(self, other)
 
+    # Implements equality comparison for numbers
     def get_comparison_eq(self, other):
         if isinstance(other, Number):
             return Number(int(self.value == other.value)).set_context(self.context), None
         else:
             return None, Value.illegal_operation(self, other)
 
+    # Implements inequality comparison for numbers
     def get_comparison_ne(self, other):
         if isinstance(other, Number):
             return Number(int(self.value != other.value)).set_context(self.context), None
         else:
             return None, Value.illegal_operation(self, other)
 
+    # Implements less than comparison for numbers
     def get_comparison_lt(self, other):
         if isinstance(other, Number):
             return Number(int(self.value < other.value)).set_context(self.context), None
         else:
             return None, Value.illegal_operation(self, other)
 
+    # Implements greater than comparison for numbers
     def get_comparison_gt(self, other):
         if isinstance(other, Number):
             return Number(int(self.value > other.value)).set_context(self.context), None
         else:
             return None, Value.illegal_operation(self, other)
 
+    # Implements less than or equal comparison for numbers
     def get_comparison_lte(self, other):
         if isinstance(other, Number):
             return Number(int(self.value <= other.value)).set_context(self.context), None
         else:
             return None, Value.illegal_operation(self, other)
 
+    # Implements greater than or equal comparison for numbers
     def get_comparison_gte(self, other):
         if isinstance(other, Number):
             return Number(int(self.value >= other.value)).set_context(self.context), None
         else:
             return None, Value.illegal_operation(self, other)
 
+    # Implements logical AND operation for numbers
     def anded_by(self, other):
         if isinstance(other, Number):
             return Number(int(self.value and other.value)).set_context(self.context), None
         else:
             return None, Value.illegal_operation(self, other)
 
+    # Implements logical OR operation for numbers
     def ored_by(self, other):
         if isinstance(other, Number):
             return Number(int(self.value or other.value)).set_context(self.context), None
@@ -972,9 +1027,11 @@ class Number(Value):
         else:
             return None, Value.illegal_operation(self, other)
 
+    # Implements logical NOT operation for numbers
     def notted(self):
         return Number(1 if self.value == 0 else 0).set_context(self.context), None
 
+    # Creates a copy of the number
     def copy(self):
         copy = Number(self.value)
         copy.set_pos(self.pos_start, self.pos_end)
@@ -984,7 +1041,7 @@ class Number(Value):
     def __repr__(self):
         return str(self.value)
 
-
+# Represents a function in the language
 class Function(Value):
     def __init__(self, name, body_node, arg_names):
         super().__init__()
@@ -992,6 +1049,7 @@ class Function(Value):
         self.body_node = body_node
         self.arg_names = arg_names
 
+    # Executes the function with given arguments
     def execute(self, args):
         res = RTResult()
         interpreter = Interpreter()
@@ -1022,6 +1080,7 @@ class Function(Value):
         if res.error: return res
         return res.success(value)
 
+    # Creates a copy of the function
     def copy(self):
         copy = Function(self.name, self.body_node, self.arg_names)
         copy.set_context(self.context)
@@ -1031,11 +1090,11 @@ class Function(Value):
     def __repr__(self):
         return f"<function {self.name}>"
 
-
 #######################################
 # CONTEXT
 #######################################
 
+# Represents the context in which code is executed
 class Context:
     def __init__(self, display_name, parent=None, parent_entry_pos=None):
         self.display_name = display_name
@@ -1043,33 +1102,36 @@ class Context:
         self.parent_entry_pos = parent_entry_pos
         self.symbol_table = None
 
-
 #######################################
 # SYMBOL TABLE
 #######################################
 
+# Manages variable and function names and their associated values
 class SymbolTable:
     def __init__(self, parent=None):
         self.symbols = {}
         self.parent = parent
 
+    # Retrieves a value from the symbol table
     def get(self, name):
         value = self.symbols.get(name, None)
         if value == None and self.parent:
             return self.parent.get(name)
         return value
 
+    # Sets a value in the symbol table
     def set(self, name, value):
         self.symbols[name] = value
 
+    # Removes a value from the symbol table
     def remove(self, name):
         del self.symbols[name]
-
 
 #######################################
 # INTERPRETER
 #######################################
 
+# Interprets and executes the AST
 class Interpreter:
     def visit(self, node, context):
         method_name = f'visit_{type(node).__name__}'
@@ -1081,11 +1143,13 @@ class Interpreter:
 
     ###################################
 
+    # Interprets a number node
     def visit_NumberNode(self, node, context):
         return RTResult().success(
             Number(node.tok.value).set_context(context).set_pos(node.pos_start, node.pos_end)
         )
 
+    # Interprets a binary operation node
     def visit_BinOpNode(self, node, context):
         res = RTResult()
         left = res.register(self.visit(node.left_node, context))
@@ -1128,6 +1192,7 @@ class Interpreter:
         else:
             return res.success(result.set_pos(node.pos_start, node.pos_end))
 
+    # Interprets a variable access node
     def visit_VarAccessNode(self, node, context):
         res = RTResult()
         var_name = node.var_name_tok.value
@@ -1143,6 +1208,7 @@ class Interpreter:
         value = value.copy().set_pos(node.pos_start, node.pos_end)
         return res.success(value)
 
+    # Interprets a unary operation node
     def visit_UnaryOpNode(self, node, context):
         res = RTResult()
         number = res.register(self.visit(node.node, context))
@@ -1160,6 +1226,7 @@ class Interpreter:
         else:
             return res.success(number.set_pos(node.pos_start, node.pos_end))
 
+    # Interprets a function definition node
     def visit_FuncDefNode(self, node, context):
         res = RTResult()
 
@@ -1174,6 +1241,7 @@ class Interpreter:
 
         return res.success(func_value)
 
+    # Interprets a function call node
     def visit_CallNode(self, node, context):
         res = RTResult()
         args = []
@@ -1195,11 +1263,13 @@ class Interpreter:
 # RUN
 #######################################
 
+# Global symbol table to store built-in constants and functions
 global_symbol_table = SymbolTable()
 global_symbol_table.set("NULL", Number(0))
 global_symbol_table.set("FALSE", Number(0))
 global_symbol_table.set("TRUE", Number(1))
 
+# Main function to run the interpreter
 def run(fn, text):
     # Generate tokens
     lexer = Lexer(fn, text)

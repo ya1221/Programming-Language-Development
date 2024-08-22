@@ -981,9 +981,6 @@ class Number(Value):
         copy.set_context(self.context)
         return copy
 
-    '''def is_true(self):
-        return self.value != 0'''
-
     def __repr__(self):
         return str(self.value)
 

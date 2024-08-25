@@ -1,0 +1,30 @@
+# Tester
+3+2
+4-1
+2*6
+6/2
+7%3
+(3 + 4) * (2 - 1)
+3 + 4 * 2 -1
+3<7
+3<=6
+4>8
+4>=8
+8==8
+Lambd x.(Lambd y.(x + y)(2))(3)
+Lambd x,y.(x+y)(3,5)
+Lambd x.(4)(5)
+Defun a(n) -> (n==0) || n*a(n-1)
+a(4)
+Defun e(b,c) -> b * (c == 0)
+e(3,4)
+e(5,5)
+Defun d(t) -> 3*t
+d(a(3))
+(2==3
+# We can have comment
+Lambd x.(x+3)()
+Defun w(f,r) -> f(r) + 5
+w(d, 4)
+Defun z(i)-> i + Lambd x,y.(x+y)(3,5)
+z(7)
